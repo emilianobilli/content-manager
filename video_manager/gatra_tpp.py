@@ -77,29 +77,3 @@ def gatra_tpp (url, content, access_type, video_id):
         print None
 
     return response['status']
-
-url = "http://localhost:8080/thirdpartyplay/"
-access_type = "none"
-video_id = "001545"
-content = """{ "token": "f8225387593c20880404b20a98aa205076a1ef06",
-            "description": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
-            "createdAt": "2016-07-21T18:53:18.653Z",
-            "type": {
-                     "code": "WEB",
-                     "description": "Web"
-                    },
-            "customer": {
-                         "id": "52d542bf66b81471618b4567",
-                         "subscriberId": "1311490993",
-                         "country": {
-                                     "code": "AR",
-                                     "description": "Argentina"
-                                    },
-                         "idp": {
-                                "code": "cv",
-                                "description": "Cablevision S.A."
-                                },
-                         "createdAt": "2014-01-14T13:59:27.000Z"
-                        }
-            }"""
-print post_play(url, content, access_type, video_id)
