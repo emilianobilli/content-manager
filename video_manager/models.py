@@ -27,6 +27,7 @@ class Config(models.Model):
     cdnurl      = models.CharField(max_length=1024)
     cdnpattern  = models.CharField(max_length=255)
     tbx_api_key = models.CharField(max_length=100)
+    gatra_enabled = models.BooleanField()
     gatra_url   = models.CharField(max_length=200)
 
 class Customer(models.Model):

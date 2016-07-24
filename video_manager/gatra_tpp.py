@@ -74,6 +74,6 @@ def gatra_tpp (url, content, access_type, video_id):
     try:
         response = h.request(url, method, json.dumps(content), header)
     except:
-        print None
+        return None
 
-    return response['status']
+    return response[0]['status']

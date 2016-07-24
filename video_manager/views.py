@@ -127,7 +127,7 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
     # Si el token no es valido
     if token_type != 'toolbox_user_token' and token_type != 'customer_id':
 	status = http_BAD_REQUEST
-	return HttpResponse('', status=status)
+	return HttpResponse('Invalid token type', status=status)
 
     # Si la media no existe
     try:
@@ -146,7 +146,8 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 	    status = http_UNAUTHORIZED
 	    return HttpResponse('', status=status)
 
-	info   = json.loads(ret)
+	tbx_info = ret
+	info     = json.loads(ret)
 
 	# Traigo el cableoperador por api_key
 	try:
@@ -173,13 +174,14 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 		response = build_M3U8(house_id, cdn_url)
 		status   = http_REQUEST_OK  
 
-		gatra_tpp(conf.gatra_url, ret, 'full_access', house_id)
+		if conf.gatra_enabled:
+		    gatra_tpp(conf.gatra_url, tbx_info, 'full_access', house_id)
 		return HttpResponse(response, status=status,content_type='application/x-mpegURL')
 	    else:
 		status = http_UNAUTHORIZED
 
-
-		gatra_tpp(conf.gatra_url, ret, 'none', house_id)
+		if conf.gatra_enabled:
+		    gatra_tpp(conf.gatra_url, tbx_info, 'none', house_id)
 		return HttpResponse('', status=status)
 
 	elif idp.access_type == 'full_payment':
@@ -195,7 +197,8 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 		response = build_M3U8(house_id, cdn_url)
 		status   = http_REQUEST_OK  
 		
-		gatra_tpp(conf.gatra_url, ret,'full_access', house_id)
+		if conf.gatra_enabled:
+		    gatra_tpp(conf.gatra_url, tbx_info,'full_access', house_id)
 		return HttpResponse(response, status=status,content_type='application/x-mpegURL')
 	    else:
 		ret = device.hasAccessTo('urn:tve:hotgo_ott')
@@ -210,11 +213,12 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 		    response = build_M3U8(house_id, cdn_url)
 		    status   = http_REQUEST_OK  
 
-		    gatra_tpp(conf.gatra_url, ret, 'payment', house_id)
+		    if conf.gatra_enabled:
+			gatra_tpp(conf.gatra_url, tbx_info, 'payment', house_id)
 		    return HttpResponse(response, status=status,content_type='application/x-mpegURL')
 		else:
-
-		    gatra_tpp(conf.gatra_url, ret, 'none', house_id)
+		    if conf.gatra_enabled:
+			gatra_tpp(conf.gatra_url, ret, 'none', house_id)
 		    status = http_UNAUTHORIZED
 		    return HttpResponse('', status=status)
 
@@ -230,12 +234,12 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 		cdn_url  = build_cdn_url(house_id)
 		response = build_M3U8(house_id, cdn_url)
 		status   = http_REQUEST_OK  
-
-		gatra_tpp(conf.gatra_url, ret, 'payment', house_id)
+		if conf.gatra_enabled:
+		    gatra_tpp(conf.gatra_url, tbx_info, 'payment', house_id)
 		return HttpResponse(response, status=status,content_type='application/x-mpegURL')
 	    else:
 		status = http_UNAUTHORIZED
-
-		gatra_tpp(conf.gatra_url, ret, 'none', house_id)
+		if conf.gatra_enabled:
+		    gatra_tpp(conf.gatra_url, tbx_info, 'none', house_id)
 		return HttpResponse('', status=status)
 
