@@ -21,7 +21,6 @@ http_BAD_REQUEST  = 400
 http_NOT_ALLOWED  = 405
 http_UNAUTHORIZED = 401
 
-
 def build_cdn_url(house_id):
     conf = Config.objects.get(enabled=True)
     return conf.cdnurl + '%s/hls/' % house_id
@@ -47,7 +46,6 @@ def save_M3U8(house_id, m3u8):
         profile.save()
 
     return True
-
 
 
 def build_M3U8(house_id, cdnurl = ''):
@@ -116,25 +114,24 @@ def vm_PostVideo(request):
     return HttpResponse('', status=http_POST_OK)
 
 
-
 def vm_GetRoot(request, api_key, token_type, token, house_id):
 
     # Si el request no es GET
     if request.method != 'GET':
-	status = http_BAD_REQUEST
-	return HttpResponse('', status=status)
+	status = http_NOT_ALLOWED
+	return HttpResponse(json.dumps({ 'error': 'Method Not Allowed' }), status=status,content_type='application/json')
 
     # Si el token no es valido
     if token_type != 'toolbox_user_token' and token_type != 'customer_id':
 	status = http_BAD_REQUEST
-	return HttpResponse('Invalid token type', status=status)
+	return HttpResponse(json.dumps({ 'error': 'Ivalid Auth Type' }), status=status,content_type='application/json')
 
     # Si la media no existe
     try:
 	video = Video.objects.get(house_id=house_id)
     except:
 	status = http_NOT_FOUND
-	return HttpResponse('', status=status)
+	return HttpResponse(json.dumps({ 'error': 'Media: %s Not Found' % house_id}), status=status,content_type='application/json')
 
     conf = Config.objects.get(enabled=True)
 
@@ -144,7 +141,7 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 	ret    = device.getInfo()
 	if ret is None:
 	    status = http_UNAUTHORIZED
-	    return HttpResponse('', status=status)
+	    return HttpResponse(json.dumps({ 'error': 'Unable to Find Device: %s' % token}), status=status,content_type='application/json')
 
 	tbx_info = ret
 	info     = json.loads(ret)
@@ -154,11 +151,11 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 	    idp = Customer.objects.get(api_key=api_key)
 	except:
 	    status = http_UNAUTHORIZED
-	    return HttpResponse('', status=status)
+	    return HttpResponse(json.dumps({ 'error': 'Api key Is Invalid' }), status=status, content_type='application/json')
 
 	if idp.idp_code != info['customer']['idp']['code']:
 	    status = http_BAD_REQUEST
-	    return HttpResponse('', status=status)
+	    return HttpResponse(json.dumps({ 'error': 'Api key and Token Not Match' }), status=status, content_type='application/json')
 
 	# Chequeo los permisos
 	if idp.access_type == 'full':
@@ -167,7 +164,7 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 		access = json.loads(ret)
 	    else:
 		status = http_NOT_FOUND
-		return HttpResponse('', status=status)
+		return HttpResponse(json.dumps({'error': 'Unable to Connect with TBX'}), status=status, content_type='application/json')
 
 	    if access['access']:
 		cdn_url  = build_cdn_url(house_id)
@@ -182,7 +179,7 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 
 		if conf.gatra_enabled:
 		    gatra_tpp(conf.gatra_url, tbx_info, 'none', house_id)
-		return HttpResponse('', status=status)
+		return HttpResponse(json.dumps({'error': 'The Customer Have Not Autorization to View this Content'}), status=status, content_type='application/json')
 
 	elif idp.access_type == 'full_payment':
 	    ret = device.hasAccessTo('urn:tve:hotgo')
@@ -190,7 +187,7 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 		access = json.loads(ret)
 	    else:
 		status = http_NOT_FOUND
-		return HttpResponse('', status=status)
+		return HttpResponse(json.dumps({'error': 'Unable to Connect with TBX'}), status=status, content_type='application/json')
 
 	    if access['access']:
 		cdn_url  = build_cdn_url(house_id)
@@ -206,7 +203,7 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 		    access = json.loads(ret)
 		else:
 		    status = http_NOT_FOUND
-		    return HttpResponse('', status=status)
+		    return HttpResponse(json.dumps({'error': 'Unable to Connect with TBX'}), status=status, content_type='application/json')
 
 		if access['access']:
 		    cdn_url  = build_cdn_url(house_id)
@@ -220,7 +217,8 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 		    if conf.gatra_enabled:
 			gatra_tpp(conf.gatra_url, ret, 'none', house_id)
 		    status = http_UNAUTHORIZED
-		    return HttpResponse('', status=status)
+		    return HttpResponse(json.dumps({'error': 'The Customer Have Not Autorization to View this Content'}), status=status, content_type='application/json')
+
 
 	elif idp.access_type == 'payment':
 	    ret = device.hasAccessTo('urn:tve:hotgo_ott')
@@ -228,7 +226,7 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 		access = json.loads(ret)
 	    else:
 		status = http_NOT_FOUND
-		return HttpResponse('', status=status)
+		return HttpResponse(json.dumps({'error': 'Unable to Connect with TBX'}), status=status, content_type='application/json')
 
 	    if access['access']:
 		cdn_url  = build_cdn_url(house_id)
@@ -241,5 +239,6 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 		status = http_UNAUTHORIZED
 		if conf.gatra_enabled:
 		    gatra_tpp(conf.gatra_url, tbx_info, 'none', house_id)
-		return HttpResponse('', status=status)
+		return HttpResponse(json.dumps({'error': 'The Customer Have Not Autorization to View this Content'}), status=status, content_type='application/json')
+
 
