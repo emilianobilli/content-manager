@@ -18,3 +18,7 @@ class VideoAdmin(admin.ModelAdmin):
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ['id', 'video', 'filename']
 
+@admin.register(models.Token)
+class TokenAdmin(admin.ModelAdmin):
+    list_display = ['id', 'token', 'video', 'expiration']
+

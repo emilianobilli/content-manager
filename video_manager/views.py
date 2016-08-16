@@ -8,11 +8,20 @@ from models import Video
 from models import Profile
 from models import Config
 from models import Customer
+from models import Token
+
+from django.utils import timezone
+
+from datetime import datetime
+from datetime import timedelta
 
 from root_m3u8 import M3U8Playlist
 from gatra_tpp import gatra_tpp
+
 import tbx
 import json
+import md5
+import time
 
 http_POST_OK      = 201
 http_REQUEST_OK   = 200
@@ -114,6 +123,175 @@ def vm_PostVideo(request):
     return HttpResponse('', status=http_POST_OK)
 
 
+def CreateToken (house_id):
+    
+    try:
+	video = Video.objects.get(house_id=house_id)
+        token = Token()
+        token.expiration = datetime.now() + timedelta(0,7200)
+        m = md5.md5()
+        s = str(time.time())
+        m.update(s + house_id)
+        token.token = m.hexdigest()
+        token.video = video
+        token.save()
+        return token.token 
+    except:
+	return ''
+
+
+#
+# Checkea los permisos de acuerdo a la configuracion del IDP
+# 
+def CheckAuthIdp ( tbxDevice, idp ):
+    
+    if idp.access_type == 'full':
+	ret = tbxDevice.hasAccessTo('urn:tve:hotgo')
+	access = json.loads(ret)
+	if access['access']:
+	    return 'full_access'
+	else:
+	    return 'none'
+
+    elif idp.access_type == 'full_payment':
+	ret = tbxDevice.hasAccessTo('urn:tve:hotgo')
+	access = json.loads(ret)
+
+	if access['access']:
+	    return 'full_access'
+	else:
+	    ret = tbxDevice.hasAccessTo('urn:tve:hotgo_ott')
+	    access = json.loads(ret)
+	    if access['access']:
+		return 'payment'
+	    else:
+		return 'none'
+
+    elif idp.access_type == 'payment':
+	ret = tbxDevice.hasAccessTo('urn:tve:hotgo_ott')
+	access = json.loads(ret)
+	if access['access']:
+	    return 'payment'
+	else:
+	    return 'none'
+
+    return 'none'
+
+
+#
+# Esta funcion retorna el archivo de manifest M3U8
+#
+def vm_GetManifest(device, info ,idp, house_id, conf):
+
+    access = CheckAuthIdp(device,idp)
+    if access != 'none':
+        cdn_url      = build_cdn_url(house_id)
+	response     = build_M3U8(house_id, cdn_url)
+        status       = http_REQUEST_OK
+	content_type = 'application/x-mpegURL'
+    else:
+	response     = json.dumps({'error': 'The Customer Have Not Autorization to View this Content'})
+	status       = http_UNAUTHORIZED
+	content_type = 'application/json'
+
+    if conf.gatra_enabled:
+	gatra_tpp(conf.gatra_url,info,access, house_id)
+
+    return HttpResponse(response, status=status,content_type=content_type)
+
+
+
+def vm_GetManifestByToken (request, token):
+    try:
+	t = Token.objects.get(token=token)
+	if t.expiration < timezone.now():
+	    t.delete()
+	    return HttpResponse(json.dumps({'error': 'Expired Token'}), status=http_UNAUTHORIZED, content_type='application/json')
+	cdn_url      = build_cdn_url(t.video.house_id)
+	response     = build_M3U8(t.video.house_id, cdn_url)
+        status       = http_REQUEST_OK
+	content_type = 'application/x-mpegURL'
+	return HttpResponse(response, status=status,content_type=content_type)
+    except:
+	return HttpResponse(json.dumps({'error': 'Invalid Token'}), status=http_UNAUTHORIZED, content_type='application/json')
+
+
+def vm_GetUrl(device, info, idp, house_id, conf):
+
+    for t in Token.objects.all():
+        if t.expiration < timezone.now():
+	    t.delete()
+
+    content_type = 'application/json'
+
+    access = CheckAuthIdp(device,idp)
+    if access != 'none':
+	token        = CreateToken(house_id)
+	if token == '':
+	    response = json.dumps({ 'error': 'Internal Server Error'})
+	    status   = 500
+	else:
+	    response = json.dumps({ 'url': '%s/%s/' % (conf.tokenurl, token), 'expiration': 7200 })
+	    status   = http_REQUEST_OK
+    else:
+	response     = json.dumps({'error': 'The Customer Have Not Autorization to View this Content'})
+	status       = http_UNAUTHORIZED
+
+    if conf.gatra_enabled and status != 500:
+	gatra_tpp(conf.gatra_url,info,access, house_id)
+
+    return HttpResponse(response, status=status,content_type=content_type)
+
+
+def vm_PostRoot(request):
+
+    if request.method != 'POST':
+        return HttpResponse(json.dumps({ 'error': 'Method Not Allowed' }), status=http_NOT_ALLOWED)
+
+    try:
+        jsonData = json.loads(request.body)
+    except:
+        return HttpResponse(json.dumps({ 'error': 'Could Not Load Json' }), status=http_BAD_REQUEST)
+
+    if ( 'api_key'            in jsonData.keys() and
+	 'toolbox_user_token' in jsonData.keys() and
+	 'house_id'	      in jsonData.keys()):
+
+	# Si la media no existe
+	try:
+	    video = Video.objects.get(house_id=jsonData['house_id'])
+	except:
+	    status = http_NOT_FOUND
+	    return HttpResponse(json.dumps({ 'error': 'Media: %s Not Found' % jsonData['house_id']}), status=status,content_type='application/json')
+
+	conf = Config.objects.get(enabled=True)
+
+	device = tbx.Device(conf.tbx_api_key,jsonData['toolbox_user_token'])
+	# Info para gatra
+	ret    = device.getInfo()
+	if ret is None:
+	    status = http_UNAUTHORIZED
+	    return HttpResponse(json.dumps({ 'error': 'Unable to Find Device: %s' % jsonData['toolbox_user_token']}), status=status,content_type='application/json')
+
+	tbx_info = ret
+	info     = json.loads(ret)
+
+	# Traigo el cableoperador por api_key
+	try:
+	    idp = Customer.objects.get(api_key=jsonData['api_key'])
+	except:
+	    status = http_UNAUTHORIZED
+	    return HttpResponse(json.dumps({ 'error': 'Api key Is Invalid' }), status=status, content_type='application/json')
+
+	if idp.idp_code != info['customer']['idp']['code']:
+	    status = http_BAD_REQUEST
+	    return HttpResponse(json.dumps({ 'error': 'Api key and Token Not Match' }), status=status, content_type='application/json')
+
+	return vm_GetUrl(device, info ,idp, jsonData['house_id'], conf)
+    else:
+	return HttpResponse(json.dumps({ 'error': 'Incomplete Json' }), status=http_BAD_REQUEST, content_type='application/json')
+
+
 def vm_GetRoot(request, api_key, token_type, token, house_id):
 
     # Si el request no es GET
@@ -157,88 +335,17 @@ def vm_GetRoot(request, api_key, token_type, token, house_id):
 	    status = http_BAD_REQUEST
 	    return HttpResponse(json.dumps({ 'error': 'Api key and Token Not Match' }), status=status, content_type='application/json')
 
-	# Chequeo los permisos
-	if idp.access_type == 'full':
-	    ret = device.hasAccessTo('urn:tve:hotgo')
-	    if ret is not None:
-		access = json.loads(ret)
-	    else:
-		status = http_NOT_FOUND
-		return HttpResponse(json.dumps({'error': 'Unable to Connect with TBX'}), status=status, content_type='application/json')
 
-	    if access['access']:
-		cdn_url  = build_cdn_url(house_id)
-		response = build_M3U8(house_id, cdn_url)
-		status   = http_REQUEST_OK  
-
-		if conf.gatra_enabled:
-		    gatra_tpp(conf.gatra_url, tbx_info, 'full_access', house_id)
-		return HttpResponse(response, status=status,content_type='application/x-mpegURL')
-	    else:
-		status = http_UNAUTHORIZED
-
-		if conf.gatra_enabled:
-		    gatra_tpp(conf.gatra_url, tbx_info, 'none', house_id)
-		return HttpResponse(json.dumps({'error': 'The Customer Have Not Autorization to View this Content'}), status=status, content_type='application/json')
-
-	elif idp.access_type == 'full_payment':
-	    ret = device.hasAccessTo('urn:tve:hotgo')
-	    if ret is not None:
-		access = json.loads(ret)
-	    else:
-		status = http_NOT_FOUND
-		return HttpResponse(json.dumps({'error': 'Unable to Connect with TBX'}), status=status, content_type='application/json')
-
-	    if access['access']:
-		cdn_url  = build_cdn_url(house_id)
-		response = build_M3U8(house_id, cdn_url)
-		status   = http_REQUEST_OK  
-		
-		if conf.gatra_enabled:
-		    gatra_tpp(conf.gatra_url, tbx_info,'full_access', house_id)
-		return HttpResponse(response, status=status,content_type='application/x-mpegURL')
-	    else:
-		ret = device.hasAccessTo('urn:tve:hotgo_ott')
-		if ret is not None:
-		    access = json.loads(ret)
-		else:
-		    status = http_NOT_FOUND
-		    return HttpResponse(json.dumps({'error': 'Unable to Connect with TBX'}), status=status, content_type='application/json')
-
-		if access['access']:
-		    cdn_url  = build_cdn_url(house_id)
-		    response = build_M3U8(house_id, cdn_url)
-		    status   = http_REQUEST_OK  
-
-		    if conf.gatra_enabled:
-			gatra_tpp(conf.gatra_url, tbx_info, 'payment', house_id)
-		    return HttpResponse(response, status=status,content_type='application/x-mpegURL')
-		else:
-		    if conf.gatra_enabled:
-			gatra_tpp(conf.gatra_url, ret, 'none', house_id)
-		    status = http_UNAUTHORIZED
-		    return HttpResponse(json.dumps({'error': 'The Customer Have Not Autorization to View this Content'}), status=status, content_type='application/json')
+	return vm_GetManifest(device, info ,idp, house_id, conf)
+    else:
+	status = http_BAD_REQUEST
+	return HttpResponse(json.dumps({ 'error': 'Bad Request, End Point Does not Exist' }), status=status,content_type='application/json')
 
 
-	elif idp.access_type == 'payment':
-	    ret = device.hasAccessTo('urn:tve:hotgo_ott')
-	    if ret is not None:
-		access = json.loads(ret)
-	    else:
-		status = http_NOT_FOUND
-		return HttpResponse(json.dumps({'error': 'Unable to Connect with TBX'}), status=status, content_type='application/json')
 
-	    if access['access']:
-		cdn_url  = build_cdn_url(house_id)
-		response = build_M3U8(house_id, cdn_url)
-		status   = http_REQUEST_OK  
-		if conf.gatra_enabled:
-		    gatra_tpp(conf.gatra_url, tbx_info, 'payment', house_id)
-		return HttpResponse(response, status=status,content_type='application/x-mpegURL')
-	    else:
-		status = http_UNAUTHORIZED
-		if conf.gatra_enabled:
-		    gatra_tpp(conf.gatra_url, tbx_info, 'none', house_id)
-		return HttpResponse(json.dumps({'error': 'The Customer Have Not Autorization to View this Content'}), status=status, content_type='application/json')
+
+
+
+
 
 

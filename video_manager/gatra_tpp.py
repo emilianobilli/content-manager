@@ -2,17 +2,17 @@ import httplib2
 import json
 
 
-def gatra_tpp (url, content, access_type, video_id):
+def gatra_tpp (url, json_data, access_type, video_id):
 
     method = 'POST'
     header = { 'Content-type': 'application/json' }
 
     h = httplib2.Http()
 
-    try:
-        json_data = json.loads(content)
-    except:
-        return None
+    #try:
+    #json_data = json.loads(content)
+    #except:
+    #    return None
 
     if 'title' in json_data.keys():
         title = json_data['title']
@@ -72,7 +72,7 @@ def gatra_tpp (url, content, access_type, video_id):
               }
 
     try:
-        response = h.request(url, method, json.dumps(content), header)
+	response = h.request(url, method, json.dumps(content), header)
     except:
         return None
 
