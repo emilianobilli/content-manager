@@ -21,6 +21,8 @@ from video_manager.views import vm_PostRoot
 from video_manager.views import vm_Crossdomain
 from video_manager.views import vm_PostVideo
 from video_manager.views import vm_GetManifestByToken
+from subs_manager.views  import sm_GetSub
+from subs_manager.views  import sm_PostSub
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
@@ -28,5 +30,7 @@ urlpatterns = [
     url(r'^video/token/(?P<token>.+)/$', vm_GetManifestByToken),
     url(r'^video/checkauth/$',vm_PostRoot ),
     url(r'^video/add/$', vm_PostVideo),
+    url(r'^subtitle/(?P<house_id>.+)/(?P<lang>.+)/(?P<format>.+)/(?P<ret>.+)/$', sm_GetSub),
+    url(r'^subtitle/add/$', sm_PostSub),
     url(r'^crossdomain.xml', vm_Crossdomain),
 ]
