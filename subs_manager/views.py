@@ -55,16 +55,21 @@ def sm_GetSub(request, house_id, lang, format, ret):
         return HttpResponse(json.dumps({'message': 'STL file not found'}), status=status, content_type='application/json')
 
     if format in FORMATS:
-        stl_str = stl_sub.toString(format, '00:00:00;00')
+        stl_str = stl_sub.toString(format, sub.som, sub.timecode_in, sub.timecode_out, sub.adjustment)
     else:
         status = http_NOT_FOUND
         return HttpResponse(json.dumps({'message': 'Incorrect Format'}), status=status, content_type='application/json')
 
     status = http_REQUEST_OK
-    if ret == 'sub':
+    if ret == 'sub' and sub.enabled and stl_str != '':
+        return HttpResponse(stl_str, status=status, content_type='octet-stream')
+    elif ret == 'check' and sub.enabled and stl_str != '':
+        return HttpResponse('', status=status)
+    elif ret == 'debug':
         return HttpResponse(stl_str, status=status, content_type='octet-stream')
     else:
-        return HttpResponse('', status=status)
+        status = http_NOT_FOUND
+        return HttpResponse(json.dumps({'message': 'Subtitle not found'}), status=status, content_type='application/json')
 
 
 def sm_PostSub(request):
@@ -106,6 +111,7 @@ def sm_PostSub(request):
     sub.house_id = house_id
     sub.language = lang
     sub.filename = filename
+    sub.enabled  = True
     sub.save()
 
     response = {"id": sub.id}

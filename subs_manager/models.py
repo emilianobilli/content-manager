@@ -13,12 +13,17 @@ class Language(models.Model):
 
 
 class Subtitle(models.Model):
-    house_id = models.CharField(max_length=10)
-    language = models.ForeignKey(Language)
-    filename = models.CharField(max_length=255)
+    enabled	 = models.BooleanField(default=True)
+    house_id     = models.CharField(max_length=10)
+    language     = models.ForeignKey(Language)
+    filename     = models.CharField(max_length=255)
+    som		 = models.CharField(max_length=11, default='00:00:00;00')
+    timecode_in  = models.CharField(max_length=11, default='', blank=True)	# 00:00:00:00
+    timecode_out = models.CharField(max_length=11, default='', blank=True)	
+    adjustment   = models.CharField(max_length=12, default='', blank=True)	# [+|-]00:00:00:00 
 
     def __unicode__(self):
-	return ('%s:%s' % (self.house_id,self.language))
+	return ('%s:%s' % (self.house_id,self.language.code))
 
 
 class Config(models.Model):

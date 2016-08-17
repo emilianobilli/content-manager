@@ -24,6 +24,13 @@ STL_TO_UTF8_ACCENT = {
 	0xC8 :{ 'U':'\xC3\x9C','u':'\xC3\xBC' } }
     
 
+class StlError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
+
 def BytesToString(bytes=None, length=0):
     ret = ''
     if bytes is not None and len(bytes) == length:
@@ -147,50 +154,120 @@ class STL(object):
 		
 	    fd.close()
 
-    def __vtt(self, som = '01:00:00;00'):
+    def __vtt(self, som = '01:00:00;00', cut_in='', cut_out='', adjust=''):
 	vtt = ''
 
-	stc = fromString(som)
-	
+	try:
+	    stc = fromString(som)
+	except TimeCodeError as e:
+	    raise StlError('fromString(): %s' % e.value)
+	from_cut    = False
+	with_adjust = False
+
+	if cut_in  != '' and cut_out != '':
+	    try:
+		tc_cut_in  = fromString(cut_in)
+		
+	    except TimeCodeError as e:
+		raise StlError('__vtt(cut_in): %s' % e.value)
+	    try:
+		tc_cut_out = fromString(cut_out)
+	    except TimeCodeError as e:
+		raise StlError('__vtt(cut_out): %s' % e.value)
+
+	    from_cut   = True
+	    
+
+	if adjust != '':
+	    with_adjust = True
+	    if adjust.startswith('+'):
+		op = 'add'
+	    elif adjust.startswith('-'):
+		op = 'sub'
+	    else:
+		raise StlError('__vtt(): Invalid Adjust Operand in Timecode')
+	    try:
+		tc_ad = fromString(adjust[1:])
+	    except TimeCodeError as e:
+		raise StlError('__vtt(adjust): %s' % e.value)
+
 	vtt = vtt + 'WEBVTT\n\n'
 	i = 0
-	for tti in self.tti:
-	    if tti.tci > stc:
-		tcin  = tti.tci - stc
-    		tcout = tti.tco - stc
+	
+	if from_cut:
+	    for tti in self.tti:
+		if tti.tci > tc_cut_in and tti.tci < tc_cut_out:
+		    tcin  = tti.tci - tc_cut_in
+    		    tcout = tti.tco - tc_cut_in
+
+		    if with_adjust:
+			if op == 'add':
+			    tcin  = tcin  + tc_ad
+			    tcout = tcout + tc_ad 
+			if op == 'sub':
+			    tcin  = tcin  - tc_ad
+			    tcout = tcout - tc_ad 
+
+
+		    srt = u'%s --> %s\n%s' % (tcin.msstr(), tcout.msstr(), tti.tf.encode_utf8())
+		    srt = srt.replace('\n\n', '\n')
+		    srt = srt + '\n\n' if not srt.endswith('\n') else srt + '\n'	
+		    i = i + 1
+		    vtt = vtt + srt
+
+	else:
+	    for tti in self.tti:
+		if tti.tci > stc:
+		    tcin  = tti.tci - stc
+    		    tcout = tti.tco - stc
     
-		srt = u'%s --> %s\n%s' % (tcin.msstr(), tcout.msstr(), tti.tf.encode_utf8())
-		srt = srt.replace('\n\n', '\n')
-		srt = srt + '\n\n' if not srt.endswith('\n') else srt + '\n'	
-		i = i + 1
-		vtt = vtt + srt	
+		    if with_adjust:
+			if op == 'add':
+			    tcin  = tcin  + tc_ad
+			    tcout = tcout + tc_ad 
+			if op == 'sub':
+			    tcin  = tcin  - tc_ad
+			    tcout = tcout - tc_ad 
+
+		    srt = u'%s --> %s\n%s' % (tcin.msstr(), tcout.msstr(), tti.tf.encode_utf8())
+		    srt = srt.replace('\n\n', '\n')
+		    srt = srt + '\n\n' if not srt.endswith('\n') else srt + '\n'	
+		    i = i + 1
+		    vtt = vtt + srt	
+
+	if i == 0:
+	    return ''
 
 	return vtt    
 
-    def __srt(self, som = '01:00:00;00'):
+    def __srt(self, som = '01:00:00;00', cut_in='', cut_out='', adjust=''):
 
 	srt = ''
 	stc = fromString(som)
 		
-	i = 0    
+	i = 1    
 	for tti in self.tti:
 	    if tti.tci > stc:
 		tcin  = tti.tci - stc
     		tcout = tti.tco - stc
     
-		srt = srt + u'%d\n%s --> %s\n%s' % (i, tcin.msstring(), tcout.msstring(), tti.tf.encode_utf8())
+		if i == 1:
+		    srt = srt + u'%d\n%s --> %s\n%s' % (i, tcin.msstr(','), tcout.msstr(','), tti.tf.encode_utf8())
+		else:
+		    srt = srt + u'\n%d\n%s --> %s\n%s' % (i, tcin.msstr(','), tcout.msstr(','), tti.tf.encode_utf8())
 		srt = srt.replace('\n\n', '\n')
-		srt = srt + '\n\n' if not srt.endswith('\n') else srt + '\n'	
+		srt = srt + '\n\n' if not srt.endswith('\n') else srt + '\n'
+
 		i = i + 1
 	return srt
 
 
-    def toString(self, format =  'srt', som = '01:00:00;00'):
+    def toString(self, format =  'srt', som = '01:00:00;00', cut_in = '', cut_out = '', adjust=''):
 	srt = ''
 	if format == 'srt':
-	    srt = self.__srt(som)
+	    srt = self.__srt(som, cut_in, cut_out, adjust)
 	if format == 'vtt':
-	    srt = self.__vtt(som)
+	    srt = self.__vtt(som, cut_in, cut_out, adjust)
 
 	return srt.encode('utf-8')
 

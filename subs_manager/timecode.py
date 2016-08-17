@@ -32,10 +32,16 @@ class TimeCode(object):
 
     def __sub__(self, other):
 	if self.frameRate == other.frameRate:
-    	    frames = self.frames - other.frames
-    	    ret = TimeCode()
-    	    ret.frameRate = self.frameRate
-    	    ret.frames = frames
+	    if other.frames > self.frames:
+		ret = TimeCode()
+		ret.frames = 0
+		ret.frameRate = self.frameRate
+
+	    else:
+    		frames = self.frames - other.frames
+    		ret = TimeCode()
+    	        ret.frameRate = self.frameRate
+    		ret.frames = frames
     	    return ret
 	else:
     	    raise TimeCodeError('FrameRate does not match')
@@ -217,5 +223,7 @@ def fromString(string):
 	mm = tc.group(2)
         ss = tc.group(3)
         ff = tc.group(4)
+    else:
+	raise TimeCodeError('Invalid Timecode String')
 
     return fromSplitedValues(hh,mm,ss,ff,frameRate)
