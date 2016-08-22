@@ -9,6 +9,7 @@
 from struct import *
 from timecode import *
 import sys
+import json
 
 #
 # Tabla de translacion ISO/6937-2 a UTF-8
@@ -154,6 +155,83 @@ class STL(object):
 		
 	    fd.close()
 
+
+    def __json(self, som = '01:00:00;00', cut_in='', cut_out='', adjust=''):
+	try:
+	    stc = fromString(som)
+	except TimeCodeError as e:
+	    raise StlError('fromString(): %s' % e.value)
+	from_cut    = False
+	with_adjust = False
+
+	if cut_in  != '' and cut_out != '':
+	    try:
+		tc_cut_in  = fromString(cut_in)
+		
+	    except TimeCodeError as e:
+		raise StlError('__json(cut_in): %s' % e.value)
+	    try:
+		tc_cut_out = fromString(cut_out)
+	    except TimeCodeError as e:
+		raise StlError('__json(cut_out): %s' % e.value)
+
+	    from_cut   = True
+
+	if adjust != '':
+	    with_adjust = True
+	    if adjust.startswith('+'):
+		op = 'add'
+	    elif adjust.startswith('-'):
+		op = 'sub'
+	    else:
+		raise StlError('__json(): Invalid Adjust Operand in Timecode')
+	    try:
+		tc_ad = fromString(adjust[1:])
+	    except TimeCodeError as e:
+		raise StlError('__json(adjust): %s' % e.value)
+
+
+	i = 0
+	sub = []
+	if from_cut:
+	    for tti in self.tti:
+		if tti.tci > tc_cut_in and tti.tci < tc_cut_out:
+		    tcin  = tti.tci - tc_cut_in
+    		    tcout = tti.tco - tc_cut_in
+
+		    if with_adjust:
+			if op == 'add':
+			    tcin  = tcin  + tc_ad
+			    tcout = tcout + tc_ad 
+			if op == 'sub':
+			    tcin  = tcin  - tc_ad
+			    tcout = tcout - tc_ad 
+
+		    sub.append({'n': i ,'tc_in': tcin.msstr(), 'tc_out' : tcout.msstr(), 'text': tti.tf.encode_utf8()})
+		    i = i + 1
+
+	else:
+	    for tti in self.tti:
+		if tti.tci > stc:
+		    tcin  = tti.tci - stc
+    		    tcout = tti.tco - stc
+    
+		    if with_adjust:
+			if op == 'add':
+			    tcin  = tcin  + tc_ad
+			    tcout = tcout + tc_ad 
+			if op == 'sub':
+			    tcin  = tcin  - tc_ad
+			    tcout = tcout - tc_ad 
+		    sub.append({'n': i ,'tc_in': tcin.msstr(), 'tc_out' : tcout.msstr(), 'text': tti.tf.encode_utf8()})
+		    i = i + 1
+
+	if i == 0:
+	    return ''
+
+	return sub 
+
+
     def __vtt(self, som = '01:00:00;00', cut_in='', cut_out='', adjust=''):
 	vtt = ''
 
@@ -268,6 +346,8 @@ class STL(object):
 	    srt = self.__srt(som, cut_in, cut_out, adjust)
 	if format == 'vtt':
 	    srt = self.__vtt(som, cut_in, cut_out, adjust)
+	if format == 'json':
+	    return self.__json(som, cut_in, cut_out, adjust)
 
 	return srt.encode('utf-8')
 

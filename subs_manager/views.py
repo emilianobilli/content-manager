@@ -10,11 +10,13 @@ from models import Language
 from models import Subtitle
 
 from stl import STL
+from translation import translateSubtitle
+
 
 http_POST_OK    = 201
 http_REQUEST_OK = 200
 http_NOT_FOUND  = 404
-FORMATS = ['srt', 'vtt']
+FORMATS = ['srt', 'vtt', 'json' ]
 
 
 def sm_GetSub(request, house_id, lang, format, ret):
@@ -67,6 +69,10 @@ def sm_GetSub(request, house_id, lang, format, ret):
         return HttpResponse('', status=status)
     elif ret == 'debug':
         return HttpResponse(stl_str, status=status, content_type='octet-stream')
+    elif ret.startswith('translate'):
+	_x, l = ret.split(':')
+	status = http_REQUEST_OK
+	return HttpResponse(translateSubtitle(lang, l, stl_sub.toString('json',sub.som, sub.timecode_in, sub.timecode_out, sub.adjustment), format), status=status, content_type='application/json')
     else:
         status = http_NOT_FOUND
         return HttpResponse(json.dumps({'message': 'Subtitle not found'}), status=status, content_type='application/json')
