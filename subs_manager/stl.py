@@ -16,14 +16,22 @@ import json
 # Ejemplo: Palabra = '\xC1\x41' -> return STL_TO_UTF8_ACCENT[Pablabra[0]][chr(Palabra[1])]
 # Todos los acentos en utf-8 comienzan por 0xC3
 #
+#STL_TO_UTF8_ACCENT = {
+#	0xC1 :{ 'A':'\xC3\x80','E':'\xC3\x88','I':'\xC3\x8C','O':'\xC3\x92','U':'\xC3\x99','a':'\xC3\xA0','e':'\xC3\xA8','i':'\xC3\xAC','o':'\xC3\xB2','u':'\xC3\xB9'},
+#	0xC2 :{ 'A':'\xC3\x81','E':'\xC3\x89','I':'\xC3\x8D','O':'\xC3\x93','U':'\xC3\x9A','a':'\xC3\xA1','e':'\xC3\xA9','i':'\xC3\xAD','o':'\xC3\xB3','u':'\xC3\xBA', '\xc2':'\x34' }, 
+#	0xC3 :{ 'A':'\xC3\x82','E':'\xC3\x8A','O':'\xC3\x94','a':'\xC3\xA2','e':'\xC3\xAA','o':'\xC3\xB4'},
+#	0xC4 :{ 'A':'\xC3\x83','N':'\xC3\x91','O':'\xC3\x95','a':'\xC3\xA3','n':'\xC3\xB1','o':'\xC3\xB5'},
+#	0xCB :{ 'C':'\xC3\x87','c':'\xC3\xa7' },
+#	0xC8 :{ 'U':'\xC3\x9C','u':'\xC3\xBC' } }
+ 
 STL_TO_UTF8_ACCENT = {
-	0xC1 :{ 'A':'\xC3\x80','E':'\xC3\x88','I':'\xC3\x8C','O':'\xC3\x92','U':'\xC3\x99','a':'\xC3\xA0','e':'\xC3\xA8','i':'\xC3\xAC','o':'\xC3\xB2','u':'\xC3\xB9'},
-	0xC2 :{ 'A':'\xC3\x81','E':'\xC3\x89','I':'\xC3\x8D','O':'\xC3\x93','U':'\xC3\x9A','a':'\xC3\xA1','e':'\xC3\xA9','i':'\xC3\xAD','o':'\xC3\xB3','u':'\xC3\xBA', '\xc2':'\x34' }, 
-	0xC3 :{ 'A':'\xC3\x82','E':'\xC3\x8A','O':'\xC3\x94','a':'\xC3\xA2','e':'\xC3\xAA','o':'\xC3\xB4'},
-	0xC4 :{ 'A':'\xC3\x83','N':'\xC3\x91','O':'\xC3\x95','a':'\xC3\xA3','n':'\xC3\xB1','o':'\xC3\xB5'},
-	0xCB :{ 'C':'\xC3\x87','c':'\xC3\xa7' },
-	0xC8 :{ 'U':'\xC3\x9C','u':'\xC3\xBC' } }
-    
+        0xC1 :{ 'A':'\xC3\x80','E':'\xC3\x88','I':'\xC3\x8C','O':'\xC3\x92','U':'\xC3\x99','a':'\xC3\xA0','e':'\xC3\xA8','i':'\xC3\xAC','o':'\xC3\xB2','u':'\xC3\xB9'},
+        0xC2 :{ 'A':'\xC3\x81','E':'\xC3\x89','I':'\xC3\x8D','O':'\xC3\x93','U':'\xC3\x9A','a':'\xC3\xA1','e':'\xC3\xA9','i':'\xC3\xAD','o':'\xC3\xB3','u':'\xC3\xBA', '\xc2':'\x34', '\x20': '\x20', 'd':'\x20' },
+        0xC3 :{ 'A':'\xC3\x82','E':'\xC3\x8A','O':'\xC3\x94','a':'\xC3\xA2','e':'\xC3\xAA','o':'\xC3\xB4'},
+        0xC4 :{ 'A':'\xC3\x83','N':'\xC3\x91','O':'\xC3\x95','a':'\xC3\xA3','n':'\xC3\xB1','o':'\xC3\xB5'},
+        0xCB :{ 'C':'\xC3\x87','c':'\xC3\xa7' },
+        0xC8 :{ 'U':'\xC3\x9C','u':'\xC3\xBC' } }
+   
 
 class StlError(Exception):
     def __init__(self, value):
@@ -397,13 +405,33 @@ class TextField(object):
 	return True if (self.tf[index] == 0x83 ) else False
 
     def isAccent(self, index=0):
-	return True if ( ( self.tf[index] >> 4 ) == 0x0C) and (self.tf[index] != 0xC9) else False
+	return True if ( ( self.tf[index] >> 4 ) == 0x0C) and (self.tf[index] != 0xC9) and (self.tf[index] != 0xCA) else False
 
     def isRareSymbol(self, index=0):
 	return True if ( ( self.tf[index] >= 0xe0 ) and (self.tf[index] <= 0xef ) ) else False
 
+#    def isSign(self,index=0):
+#	return True if (self.tf[index] == 0xBF) or (self.tf[index] == 0xA1) or (self.tf[index] == 0xEC) or (self.tf[index] == 0xE1) or (self.tf[index] == 0xED) or (self.tf[index] == 0xAA ) or (self.tf[index] == 0xBA) or (self.tf[index] == 0xA4) or (self.tf[index] == 0xB0) or (self.tf[index] == 0xA9) or (self.tf[index] == 0xB9) or (self.tf[index] == 0xC9 ) or (self.tf[index] == 0xA6) else False
+
     def isSign(self,index=0):
-	return True if (self.tf[index] == 0xBF) or (self.tf[index] == 0xA1) or (self.tf[index] == 0xEC) or (self.tf[index] == 0xE1) or (self.tf[index] == 0xED) or (self.tf[index] == 0xAA ) or (self.tf[index] == 0xBA) or (self.tf[index] == 0xA4) or (self.tf[index] == 0xB0) or (self.tf[index] == 0xA9) or (self.tf[index] == 0xB9) or (self.tf[index] == 0xC9 ) or (self.tf[index] == 0xA6) else False
+        if ( (self.tf[index] == 0xBF) or
+              (self.tf[index] == 0xA1) or
+              (self.tf[index] == 0xEC) or
+              (self.tf[index] == 0xE1) or
+              (self.tf[index] == 0xED) or
+              (self.tf[index] == 0xAA) or
+              (self.tf[index] == 0xBA) or
+              (self.tf[index] == 0xA4) or
+              (self.tf[index] == 0xB0) or
+              (self.tf[index] == 0xA9) or
+              (self.tf[index] == 0xB9) or
+              (self.tf[index] == 0xC9) or
+              (self.tf[index] == 0xA6) or
+              (self.tf[index] == 0xCA) or
+              (self.tf[index] == 0xd0) ):
+            return True
+        else:
+            return False	
 
     def isItalicOn(self, index=0):
 	return True if ( self.tf[index] == 0x80 ) else False
@@ -450,7 +478,9 @@ class TextField(object):
 			utf8_str = utf8_str + '\xC2\xB4'
 		    elif self.tf[i] == 0xC9:
 			utf8_str = utf8_str + ' '
-		    
+		    elif self.tf[i] == 0xD0:
+                        utf8_str = utf8_str + '-'
+
 		    else:
 			utf8_str = utf8_str + '*'
 		elif self.isCrLf(i):

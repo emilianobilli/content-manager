@@ -3,7 +3,7 @@ import re
 # Funcion para crear un objeto de tipo TimeCode a partir de un string ("08:37:45:17" o "08:37:45;17") y de un entero con el Frame Rate
 #
 # Emiliano A. Billi 2011
-#
+# Nicolas  Pajoni   2012
 
 class TimeCodeError(Exception):
     def __init__(self, value):
@@ -144,6 +144,14 @@ class TimeCode(object):
     def __repr__(self):
 	return str(self)
 
+
+    def tosec(self, frameRate = None):
+	if frameRate is not None:
+	    return int(self.frames / frameRate)
+	else:
+	    return int(self.frames / self.frameRate)
+
+
     def msstr(self, lastcolon = '.', mslen = 3):
 	if self.frameRate ==  29.97:
     	    hh, ff = divmod(self.frames, 107892)
@@ -164,7 +172,7 @@ class TimeCode(object):
 	ffstr = str(int (( ff * 1000) / 30))
 
 	while len(ffstr) < mslen:
-	    ffstr = ffstr + '0'
+	    ffstr = '0' + ffstr
 
 	return ('%s:%s:%s%s%s' % (hhstr,mmstr,ssstr,lastcolon,ffstr))
 
