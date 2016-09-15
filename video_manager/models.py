@@ -11,6 +11,19 @@ class Video(models.Model):
     def __unicode__(self):
         return '%s:%s' % (self.format,self.house_id)
 
+
+
+class ProfileFile(models.Model):
+    profile	    = models.ForeignKey('Profile')
+    number	    = models.IntegerField()
+    extinf	    = models.CharField(max_length=20)
+    filename	    = models.CharField(max_length=255)
+
+    def __unicode__(self):
+	return self.filename
+
+
+
 class Profile(models.Model):
     video      = models.ForeignKey('Video')
     bandwidth  = models.CharField(max_length=50)
@@ -18,6 +31,10 @@ class Profile(models.Model):
     codecs     = models.CharField(max_length=100)
     resolution = models.CharField(max_length=50)
     filename   = models.CharField(max_length=255)
+    version         = models.CharField(max_length=1)
+    media_seq  	    = models.CharField(max_length=5)
+    allow_cache	    = models.CharField(max_length=5)
+    target_duration = models.CharField(max_length=5)
 
     def __unicode__(self):
         return self.filename
@@ -28,8 +45,18 @@ class Config(models.Model):
     cdnurl      = models.CharField(max_length=1024)
     cdnpattern  = models.CharField(max_length=255)
     tbx_api_key = models.CharField(max_length=100)
+    secret	= models.BooleanField()
     gatra_enabled = models.BooleanField()
     gatra_url   = models.CharField(max_length=200)
+
+class CdnSecret(models.Model):
+    enabled	= models.BooleanField()
+    gen		= models.CharField(max_length=1)
+    key		= models.CharField(max_length=64)
+
+    def __unicode__(self):
+	return '%s:%s' % (self.gen, self.key)
+
 
 class Token(models.Model):
     expiration  = models.DateTimeField()

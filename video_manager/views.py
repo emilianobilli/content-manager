@@ -9,14 +9,22 @@ from models import Profile
 from models import Config
 from models import Customer
 from models import Token
+from models import CdnSecret
 
 from django.utils import timezone
 
 from datetime import datetime
 from datetime import timedelta
 
-from root_m3u8 import M3U8Playlist
+from m3u8 import M3U8Playlist
+from m3u8 import M3U8Rendition
+from m3u8 import get_hls_manifest
+from m3u8 import dtime
 from gatra_tpp import gatra_tpp
+
+from Utils import save_manifest_in_model
+from Utils import build_root_manifest
+from Utils import build_rendition_manifest
 
 import tbx
 import json
@@ -30,47 +38,21 @@ http_BAD_REQUEST  = 400
 http_NOT_ALLOWED  = 405
 http_UNAUTHORIZED = 401
 
+def getcdnbase ():
+    conf = Config.objects.get(enabled=True)
+    return conf.cdnurl
+
+def getpath (house_id):
+    return '%s/hls' % house_id
+
+def usesecret():
+    conf = Config.objects.get(enabled=True)
+    return conf.secret
+
+
 def build_cdn_url(house_id):
     conf = Config.objects.get(enabled=True)
     return conf.cdnurl + '%s/hls/' % house_id
-
-
-def save_M3U8(house_id, m3u8):
-    try:
-        video = Video.objects.get(house_id=house_id)
-        return False
-    except:
-        video = Video()
-        video.house_id = house_id
-        video.save()
-
-    for f in m3u8.files:
-        profile = Profile()
-        profile.video = video
-        profile.bandwidth  = f['bandwidth']
-        profile.average    = f['average']
-        profile.codecs     = f['codecs']
-        profile.resolution = f['resolution']
-        profile.filename   = f['filename']
-        profile.save()
-
-    return True
-
-
-def build_M3U8(house_id, cdnurl = ''):
-    try:
-        video = Video.objects.get(house_id=house_id)
-    except:
-        return ''
-
-    profiles = Profile.objects.filter(video=video)
-
-    m3u8 = M3U8Playlist()
-    m3u8.version = 3
-    for p in profiles:
-        m3u8.addfile(p.filename,p.bandwidth,p.average,p.codecs,p.resolution)
-
-    return m3u8.toString(cdnurl)
 
 
 def vm_Crossdomain(request):
@@ -100,25 +82,29 @@ def vm_PostVideo(request):
     except:
         return HttpResponse('Could not load json', status=http_BAD_REQUEST)
 
-
-    method = 'GET'
-    h = httplib2.Http()
-
     root = jsonData['root']
 
     house_id, ext = root.split('.')
 
-    cdn_url = build_cdn_url(house_id)
-    uri = urlparse.urlparse(cdn_url + '/' + root)
+    config = Config.objects.get(enabled=True)
+    
+    gen = ''
+    key = ''
+    if config.secret:
+	secret   = CdnSecret.objects.filter(enabled=True)
+	if len(secret) != 0:
+	    gen = secret[0].gen
+	    key = secret[0].key
 
+    cdnurl   = config.cdnurl
+    path     = getpath(house_id)
+    manifest = get_hls_manifest(config.cdnurl, path ,root, gen, key)
     try:
-        response, content = h.request(uri.geturl(),method,'')
-    except socket.error as err:
-        raise socket.error
-
-    m3u8 = M3U8Playlist()
-    m3u8.fromString(content)
-    save_M3U8(house_id, m3u8)
+	ret = save_manifest_in_model(house_id, manifest)
+	if not ret:
+	    return HttpResponse('',status=500)
+    except:
+	return HttpResponse('',status=500)
 
     return HttpResponse('', status=http_POST_OK)
 
@@ -181,12 +167,27 @@ def CheckAuthIdp ( tbxDevice, idp ):
 #
 # Esta funcion retorna el archivo de manifest M3U8
 #
-def vm_GetManifest(device, info ,idp, house_id, conf):
+def vm_GetManifest(device, info ,idp, house_id, config):
 
     access = CheckAuthIdp(device,idp)
     if access != 'none':
-        cdn_url      = build_cdn_url(house_id)
-	response     = build_M3U8(house_id, cdn_url)
+	
+	if config.secret:
+	    token    = CreateToken(house_id)
+	    cdnurl   = config.tokenurl
+	    if not cdnurl.endswith('/'):
+		cdnurl = cdnurl + '/'
+	    cdnurl   = cdnurl + token
+	else:
+	    cdnurl   = config.cdnurl
+	    if not cdnurl.endswith('/'):
+		cdnurl = cdnurl + '/'
+	    cdnurl   = cdnurl + getpath(house_id)
+
+	if not cdnurl.endswith('/'):
+	    cdnurl = cdnurl + '/'
+
+	response     = build_root_manifest (house_id, cdnurl)
         status       = http_REQUEST_OK
 	content_type = 'application/x-mpegURL'
     else:
@@ -207,13 +208,58 @@ def vm_GetManifestByToken (request, token):
 	if t.expiration < timezone.now():
 	    t.delete()
 	    return HttpResponse(json.dumps({'error': 'Expired Token'}), status=http_UNAUTHORIZED, content_type='application/json')
-	cdn_url      = build_cdn_url(t.video.house_id)
-	response     = build_M3U8(t.video.house_id, cdn_url)
+
+	config   = Config.objects.get(enabled=True)
+	house_id = t.video.house_id
+
+	if config.secret:
+	    cdnurl   = config.tokenurl
+	    if not cdnurl.endswith('/'):
+		cdnurl = cdnurl + '/'
+	    cdnurl   = cdnurl + token
+	else:
+	    cdnurl   = config.cdnurl
+	    if not cdnurl.endswith('/'):
+		cdnurl = cdnurl + '/'
+	    cdnurl   = cdnurl + getpath(house_id)
+
+	if not cdnurl.endswith('/'):
+	    cdnurl = cdnurl + '/'
+
+	response     = build_root_manifest (house_id, cdnurl)
         status       = http_REQUEST_OK
 	content_type = 'application/x-mpegURL'
 	return HttpResponse(response, status=status,content_type=content_type)
     except:
 	return HttpResponse(json.dumps({'error': 'Invalid Token'}), status=http_UNAUTHORIZED, content_type='application/json')
+
+
+
+def vm_GetRenditionByToken(request, token, filename):
+    try:
+	t = Token.objects.get(token=token)
+	if t.expiration < timezone.now():
+	    t.delete()
+	    return HttpResponse('', status=http_UNAUTHORIZED)
+    except:
+	return HttpResponse('', status=http_UNAUTHORIZED)
+
+
+    respose  = ''
+    house_id = t.video.house_id
+    cdnbase  = getcdnbase()
+    path     = getpath(house_id)
+    secret   = CdnSecret.objects.filter(enabled=True)
+    if len(secret) != 0:
+	stime,etime = dtime(3)
+	response = build_rendition_manifest(house_id, filename, cdnbase, path, secret[0].gen, secret[0].key, stime, etime)
+
+    if response != '':
+	status       = http_REQUEST_OK
+	content_type = 'application/x-mpegURL'
+	return HttpResponse(response, status=status,content_type=content_type)
+    
+    return HttpResponse(response, status=http_NOT_FOUND)
 
 
 def vm_GetUrl(device, info, idp, house_id, conf):

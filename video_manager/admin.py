@@ -22,3 +22,10 @@ class ProfileAdmin(admin.ModelAdmin):
 class TokenAdmin(admin.ModelAdmin):
     list_display = ['id', 'token', 'video', 'expiration']
 
+@admin.register(models.CdnSecret)
+class CdnSecretAdmin(admin.ModelAdmin):
+    list_display = ['enabled', 'gen', 'key']
+
+@admin.register(models.ProfileFile)
+class ProfileFileAdmin(admin.ModelAdmin):
+    list_displat = ['profile', 'filename']
