@@ -27,7 +27,7 @@ def get_hls_manifest(cdnbase, path , manifest, gen='', key=''):
 	path    = path + '/'
 
     if gen != '' and key != '':
-	h   = ComputeHash(gen,key,path+manifest)
+	h   = ComputeHash(gen,key,'/'+path+manifest)
 	url = cdnbase + path + manifest + '?hash=%s' % h
     else:
 	url = cdnbase + path + manifest
@@ -38,12 +38,15 @@ def get_hls_manifest(cdnbase, path , manifest, gen='', key=''):
     except socket.error as err:
         raise socket.error
 
+    if response['status'] != '200':
+	return None
+
     m3u8_manifest = M3U8Playlist()
     m3u8_manifest.fromString(content)
 
     for f in m3u8_manifest.files:
 	if gen != '' and key != '':
-	    h   = ComputeHash(gen,key, path+f['filename'])
+	    h   = ComputeHash(gen,key, '/'+path+f['filename'])
 	    url = cdnbase + path + f['filename'] + '?hash=%s' % h
 	else:
 	    url = cdnbase + path + f['filename']
@@ -54,6 +57,9 @@ def get_hls_manifest(cdnbase, path , manifest, gen='', key=''):
 	except socket.error as err:
     	    raise socket.error
 	
+	if response['status'] != '200':
+	    return None	
+
 	f['rendition'] = M3U8Rendition()
 	f['rendition'].fromString(content)
 

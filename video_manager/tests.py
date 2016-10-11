@@ -6,8 +6,10 @@ import socket
 from root_m3u8 import M3U8Rendition
 from root_m3u8 import M3U8Playlist
 from root_m3u8 import dtime
-# Create your tests here.
+from models import Video
 
+# Create your tests here.
+'''
 def get_hls_manifest(cdn_url, manifest):
 
     method = 'GET'
@@ -44,8 +46,11 @@ for i in x.files:
     print i
     print i['rendition'].header
     start,end = dtime(2)
-    print i['rendition'].toStringHash('http://cdnlevel3.zolechamedia.net', '009642/hls/', '0', 'contributionlevel3', '','')
+    print i['rendition'].toStringHash('http://cdnlevel3token.zolechamedia.net', '009642/hls/', '0', '7a62159a1c33cff8a5ee55d99a40842d', '201609141400','201609141402')
 #    for j in i['rendition'].files:
 #	print j.toString()
 #	print j
 
+'''
+video = Video.objects.all()
+print video

@@ -99,6 +99,9 @@ def vm_PostVideo(request):
     cdnurl   = config.cdnurl
     path     = getpath(house_id)
     manifest = get_hls_manifest(config.cdnurl, path ,root, gen, key)
+    
+    if manifest is None:
+	return HttpResponse('', status=http_BAD_REQUEST)
     try:
 	ret = save_manifest_in_model(house_id, manifest)
 	if not ret:
@@ -109,21 +112,25 @@ def vm_PostVideo(request):
     return HttpResponse('', status=http_POST_OK)
 
 
+def _get_md5_hash(house_id):
+    m = md5.md5()
+    s = str(time.time())
+    m.update(s + house_id)
+    return m.hexdigest()
+
+
 def CreateToken (house_id):
-    
     try:
 	video = Video.objects.get(house_id=house_id)
-        token = Token()
-        token.expiration = datetime.now() + timedelta(0,7200)
-        m = md5.md5()
-        s = str(time.time())
-        m.update(s + house_id)
-        token.token = m.hexdigest()
-        token.video = video
-        token.save()
-        return token.token 
     except:
 	return ''
+    
+    token = Token()
+    token.expiration 	= datetime.now() + timedelta(0,7200)
+    token.token      	= _get_md5_hash(house_id)
+    token.video		= video
+    token.save()
+    return token.token
 
 
 #
@@ -195,8 +202,8 @@ def vm_GetManifest(device, info ,idp, house_id, config):
 	status       = http_UNAUTHORIZED
 	content_type = 'application/json'
 
-    if conf.gatra_enabled:
-	gatra_tpp(conf.gatra_url,info,access, house_id)
+    if config.gatra_enabled:
+	gatra_tpp(config.gatra_url,info,access, house_id)
 
     return HttpResponse(response, status=status,content_type=content_type)
 

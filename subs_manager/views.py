@@ -69,7 +69,8 @@ def sm_GetSub(request, house_id, lang, format, ret):
 
     status = http_REQUEST_OK
     if ret == 'sub' and sub.enabled and stl_str != '':
-        return HttpResponse(stl_str, status=status, content_type='octet-stream')
+#        return HttpResponse(stl_str, status=status, content_type='octet-stream')
+	return HttpResponse(stl_str, status=status, content_type='text/vtt;charset=utf-8')
     elif ret == 'check' and sub.enabled and stl_str != '':
         return HttpResponse('', status=status)
     elif ret == 'debug':
