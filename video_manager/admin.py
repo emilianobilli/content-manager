@@ -8,7 +8,7 @@ class ConfigAdmin(admin.ModelAdmin):
 
 @admin.register(models.Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ['name', 'api_key', 'access_type' ]
+    list_display = ['name', 'api_key', 'access_type', 'auth_method', 'gatra_post' ]
 
 @admin.register(models.Video)
 class VideoAdmin(admin.ModelAdmin):
@@ -28,4 +28,8 @@ class CdnSecretAdmin(admin.ModelAdmin):
 
 @admin.register(models.ProfileFile)
 class ProfileFileAdmin(admin.ModelAdmin):
-    list_displat = ['profile', 'filename']
+    list_display = ['profile', 'filename']
+
+@admin.register(models.AuthMethod)
+class AuthMethodAdmin(admin.ModelAdmin):
+    list_display = ['name']

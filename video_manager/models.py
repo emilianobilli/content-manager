@@ -66,6 +66,13 @@ class Token(models.Model):
     def __unicode__(self):
 	return self.token
 
+class AuthMethod(models.Model):
+    name = models.CharField(max_length=50)
+
+    def __unicode__(self):
+	return self.name
+
+
 class Customer(models.Model):
 
     TYPE = ( ('half', 'half'),
@@ -75,10 +82,12 @@ class Customer(models.Model):
 	 ('payment', 'payment'),
 	)
 
-    name	= models.CharField(max_length=50)
-    idp_code    = models.CharField(max_length=20)
-    access_type = models.CharField(max_length=50, choices=TYPE)
-    api_key     = models.CharField(max_length=50)
+    name	 = models.CharField(max_length=50)
+    idp_code     = models.CharField(max_length=20)
+    access_type  = models.CharField(max_length=50, choices=TYPE)
+    api_key      = models.CharField(max_length=50)
+    auth_method  = models.ForeignKey('AuthMethod', default=1)
+    gatra_post   = models.BooleanField(default=False)
 
     def __unicode__(self):
 	return self.name

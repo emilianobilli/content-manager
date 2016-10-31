@@ -271,13 +271,23 @@ def vm_GetRenditionByToken(request, token, filename):
 
 def vm_GetUrl(device, info, idp, house_id, conf):
 
+    #
+    # Borra los tokens expirados
+    #
     for t in Token.objects.all():
         if t.expiration < timezone.now():
 	    t.delete()
 
     content_type = 'application/json'
 
-    access = CheckAuthIdp(device,idp)
+    if device is not None and idp.auth_method.name == 'TOOLBOX':
+	access = CheckAuthIdp(device,idp)
+    elif idp.auth_method.name == 'DIRECT':
+	if idp.access_type == 'full':
+	    access = 'full'
+	else:
+	    access = 'none'
+
     if access != 'none':
 	token        = CreateToken(house_id)
 	if token == '':
@@ -290,7 +300,7 @@ def vm_GetUrl(device, info, idp, house_id, conf):
 	response     = json.dumps({'error': 'The Customer Have Not Autorization to View this Content'})
 	status       = http_UNAUTHORIZED
 
-    if conf.gatra_enabled and status != 500:
+    if idp.gatra_post == True and info is not None and conf.gatra_enabled and status != 500:
 	gatra_tpp(conf.gatra_url,info,access, house_id)
 
     return HttpResponse(response, status=status,content_type=content_type)
@@ -307,7 +317,7 @@ def vm_PostRoot(request):
         return HttpResponse(json.dumps({ 'error': 'Could Not Load Json' }), status=http_BAD_REQUEST)
 
     if ( 'api_key'            in jsonData.keys() and
-	 'toolbox_user_token' in jsonData.keys() and
+       ( 'toolbox_user_token' in jsonData.keys() or 'token' in jsonData.keys()) and
 	 'house_id'	      in jsonData.keys()):
 
 	# Si la media no existe
@@ -319,16 +329,6 @@ def vm_PostRoot(request):
 
 	conf = Config.objects.get(enabled=True)
 
-	device = tbx.Device(conf.tbx_api_key,jsonData['toolbox_user_token'])
-	# Info para gatra
-	ret    = device.getInfo()
-	if ret is None:
-	    status = http_UNAUTHORIZED
-	    return HttpResponse(json.dumps({ 'error': 'Unable to Find Device: %s' % jsonData['toolbox_user_token']}), status=status,content_type='application/json')
-
-	tbx_info = ret
-	info     = json.loads(ret)
-
 	# Traigo el cableoperador por api_key
 	try:
 	    idp = Customer.objects.get(api_key=jsonData['api_key'])
@@ -336,9 +336,27 @@ def vm_PostRoot(request):
 	    status = http_UNAUTHORIZED
 	    return HttpResponse(json.dumps({ 'error': 'Api key Is Invalid' }), status=status, content_type='application/json')
 
-	if idp.idp_code != info['customer']['idp']['code']:
-	    status = http_BAD_REQUEST
-	    return HttpResponse(json.dumps({ 'error': 'Api key and Token Not Match' }), status=status, content_type='application/json')
+	if idp.auth_method.name == 'TOOLBOX':
+	    device = tbx.Device(conf.tbx_api_key,jsonData['toolbox_user_token'])
+	    # Info para gatra
+	    ret    = device.getInfo()
+	    if ret is None:
+		status = http_UNAUTHORIZED
+	        return HttpResponse(json.dumps({ 'error': 'Unable to Find Device: %s' % jsonData['toolbox_user_token']}), status=status,content_type='application/json')
+
+	    tbx_info = ret
+	    info     = json.loads(ret)
+
+	    if idp.idp_code != info['customer']['idp']['code']:
+		status = http_BAD_REQUEST
+		return HttpResponse(json.dumps({ 'error': 'Api key and Token Not Match' }), status=status, content_type='application/json')
+
+	elif idp.auth_method.name == 'DIRECT':
+	    device = None
+	    info   = None
+	    #
+	    # Falta checkear que el token sea valido
+	    #
 
 	return vm_GetUrl(device, info ,idp, jsonData['house_id'], conf)
     else:
