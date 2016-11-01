@@ -14,7 +14,8 @@ from models import Language
 from models import Subtitle
 from models import SubtitleFile
 
-from stl import STL
+#from stl import STL
+from vmutils.stl import STL
 from translation import translateSubtitle
 from django.contrib.auth.decorators import login_required
 

@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 
 import json
-import timecode
+from vmutils import timecode
 
 # Create your views here.
 
