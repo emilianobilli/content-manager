@@ -1,4 +1,4 @@
-import stl
+from vmutils import stl
 import Google
 import json
 
