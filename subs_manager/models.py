@@ -47,8 +47,12 @@ class Subtitle(models.Model):
 
 
 class Config(models.Model):
-    enabled	  = models.BooleanField()
-    subtitle_path = models.CharField(max_length=255)
-
+    name	   = models.CharField(max_length=255, blank=True)
+    enabled	   = models.BooleanField()
+    repository	   = models.CharField(max_length=1, choices=(('A', 'S3'), ('L', 'Local')), default='L')
+    subtitle_path  = models.CharField(max_length=255, help_text='Bucket name or Local Path')
+    aws_access_key = models.CharField(max_length=255, blank=True)
+    aws_secret_key = models.CharField(max_length=255, blank=True)
+    
     def __unicode__(self):
 	return self.subtitle_path

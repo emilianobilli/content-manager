@@ -11,7 +11,7 @@ class LanguageAdmin(admin.ModelAdmin):
 
 @admin.register(models.Config)
 class ConfigAdmin(admin.ModelAdmin):
-    list_display = ['id', 'enabled']
+    list_display = ['id','name' ,'enabled']
 
 @admin.register(models.SubtitleFile)
 class SubtitleFileAdmin(admin.ModelAdmin):

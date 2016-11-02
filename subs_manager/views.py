@@ -4,8 +4,10 @@ from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.core.exceptions import *
 from django.template import loader
+import boto3
 import json
 import re
+
 
 # Create your views here.
 
@@ -49,18 +51,26 @@ def sm_GetSub(request, house_id, lang, format, ret):
         status = http_NOT_FOUND
         return HttpResponse(json.dumps({'message': 'Config not found'}), status=status, content_type='application/json')
 
-
-    if sub_path.endswith('/'):
-        stl_path = sub_path + sub.file.name
-    else:
-        stl_path = sub_path + '/' + sub.file.name
-
     stl_sub = STL()
-    try: 
-        stl_sub.load(stl_path)
-    except:
-        status = http_NOT_FOUND
-        return HttpResponse(json.dumps({'message': 'STL file not found'}), status=status, content_type='application/json')
+    if config.repository == 'L':
+	if sub_path.endswith('/'):
+    	    stl_path = sub_path + sub.file.name
+	else:
+    	    stl_path = sub_path + '/' + sub.file.name
+    
+	try: 
+    	    stl_sub.load(stl_path)
+	except:
+    	    status = http_NOT_FOUND
+    	    return HttpResponse(json.dumps({'message': 'STL file not found'}), status=status, content_type='application/json')
+    else:
+	try:
+	    s3  = boto3.resource('s3',aws_access_key_id=config.aws_access_key, aws_secret_access_key=config.aws_secret_key)
+	    obj = s3.Object(sub_path, sub.file.name)
+	    stl_sub.fromString(obj.get()['Body'].read())
+	except:
+	    status = http_NOT_FOUND
+    	    return HttpResponse(json.dumps({'message': 'STL file not found'}), status=status, content_type='application/json')
 
     if format in FORMATS:
         stl_str = stl_sub.toString(format, sub.som, sub.timecode_in, sub.timecode_out, sub.adjustment)
@@ -105,15 +115,28 @@ def sm_UploadFile(request):
             message = {'message':'ERROR: Incorrect subtitle extension.'}
             return TemplateResponse(request, "sub_upload_failed.html", message)
 
-        if handle_uploaded_file(sub_path, request.FILES['datafile']):
-            sub_file = SubtitleFile()
-            sub_file.name = request.FILES['datafile']
-            sub_file.save()
-            return TemplateResponse(request, "sub_upload_ok.html")
-#            return HttpResponseRedirect('/static/front/subtitulos_uploaded_successfully.html')
-        else:
-            message = {'message':'ERROR: Subtitle could not be saved.'}
-            return TemplateResponse(request, "sub_upload_failed.html", message)
+	if config.repository == 'L':
+	    if handle_uploaded_file(sub_path, request.FILES['datafile']):
+        	sub_file = SubtitleFile()
+        	sub_file.name = request.FILES['datafile']
+        	sub_file.save()
+        	return TemplateResponse(request, "sub_upload_ok.html")
+#            	return HttpResponseRedirect('/static/front/subtitulos_uploaded_successfully.html')
+	    else:
+        	message = {'message':'ERROR: Subtitle could not be saved.'}
+        	return TemplateResponse(request, "sub_upload_failed.html", message)
+
+	elif config.repository == 'A':
+	    if handle_uploaded_file_s3(sub_path, config.aws_access_key, config.aws_secret_key, request.FILES['datafile']):
+        	sub_file = SubtitleFile()
+        	sub_file.name = request.FILES['datafile']
+        	sub_file.save()
+        	return TemplateResponse(request, "sub_upload_ok.html")
+#            	return HttpResponseRedirect('/static/front/subtitulos_uploaded_successfully.html')
+	    else:
+        	message = {'message':'ERROR: Subtitle could not be saved.'}
+        	return TemplateResponse(request, "sub_upload_failed.html", message)
+
     return render(request, 'sub_upload.html')
 
 
@@ -126,6 +149,21 @@ def handle_uploaded_file(path, file):
         return True
     except:
         return False
+
+def handle_uploaded_file_s3(path, aws_access_key, aws_secret_key, file):
+    buffer = None
+    try:
+	for chunk in file.chunks():
+    	    if buffer is None:
+		buffer = chunk
+	    else:
+    		buffer = buffer + chunk
+
+	s3 = boto3.resource('s3',aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
+	s3.Bucket(path).put_object(Key=file.name, Body=buffer)
+	return True
+    except:
+	return False
 
 
 def sm_add_subtitle_page(request):
