@@ -1,0 +1,44 @@
+<html lang="en-us">
+</head>
+
+
+<body>
+        <h1>Subtitle List</h1>
+	 <form action="http://videoauth.zolechamedia.net/subtitle/add/" enctype="multipart/form-data" method="post">
+              <div>
+                 <legend>Select media house id:</legend>
+                 <input type="text" name="house_id">
+              </div>
+              <div>
+                 <legend>Select timecode in:</legend>
+                 <input type="text" name="tc_in" placeholder="00:00:00;00">
+              </div>                  
+              <div>
+                 <legend>Select timecode out:</legend>
+                 <input type="text" name="tc_out" placeholder="00:00:00;00">
+              </div>
+              <div>
+                 <legend>Select time adjustment:</legend>
+                 <input type="text" name="adjustment" placeholder="00:00:00;00">
+             </div>
+              <div>
+                 <legend>Select subtitle language:</legend>
+                 <select name="language">
+                 <option value="es">es</option>
+                 <option value="pt">pt</option>
+              </select>
+             </div>                                       
+                  
+					<select name="file_id" placeholder="Select a file...">
+						<option value="">Select a file...</option>
+                        {% for sub in sub_list %}
+                           <option value="{{ sub.id }}">
+                             {{ sub.name }}
+                          </option>
+                        {% endfor %}
+					</select>
+                      <button type="reset">Cancel</button>
+                      <button type="submit">Enviar</button>
+		</form>
+    <div id="footer">zolechamedia inc.</div>
+</body></html>

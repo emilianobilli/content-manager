@@ -1,0 +1,36 @@
+{% load staticfiles %}
+
+
+<html>
+<head>
+</head>
+<body>
+<h1>Subtitles manager</h1>
+      <form  action="http://videoauth.zolechamedia.net/subtitle/upload/" enctype="multipart/form-data" method="post">
+                <fieldset>
+                  <legend>Zolechamedia</legend>
+                  <div >
+                    <label for="inputFile" >Subtitulos</label>
+                    <div >
+                      
+                      <input type="file" id="inputFile" placeholder="subi tu subtitulo" name="datafile" size="40">
+                    </div>
+                  </div>
+
+
+
+                  <div>
+                    <div>
+                      <button type="reset">Cancel</button>
+                      <button type="submit">Enviar</button>
+                    </div>
+                  </div>
+                </fieldset>
+              </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+

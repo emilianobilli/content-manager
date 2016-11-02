@@ -1,0 +1,105 @@
+<html lang="en-us">
+<head>
+<title>Select job to change | Django site admin</title>
+<link rel="stylesheet" type="text/css" href="/static/admin/css/base.css">
+<link rel="stylesheet" type="text/css" href="/static/admin/css/changelists.css">
+<link rel="stylesheet" type="text/css" href="/static/front/css/bootstrap.min.css">
+
+<link rel="stylesheet" href="/static/front/css/normalize.css">
+<link rel="stylesheet" href="/static/front/css/stylesheet.css">
+
+
+
+  
+
+<script type="text/javascript" src="/static/front/js/jquery.js"></script>
+<script type="text/javascript"  src="/static/front/js/selectize.js"></script>
+<script type="text/javascript" src="/static/front/js/index.js"></script>
+
+<meta name="robots" content="NONE,NOARCHIVE">
+</head>
+
+
+<body>
+<div id="container">
+ <div class="row">
+  <div class="span12">
+    <div id="content" class="flex">
+        <h1>Subtitle List</h1>
+		<div id="content-main">
+<img src="/static/front/img/0.gif" >
+			<div class="module" id="changelist">
+				 <form class="form-horizontal" action="http://videoauth.zolechamedia.net/subtitle/add/" enctype="multipart/form-data" method="post">
+           <input type="hidden" name="csrfmiddlewaretoken" value="zzFPaUfsvODZ9E8Mrpia9g7OBlrc55vr">
+
+
+                  <div class="input_house_id">
+                     <legend>Select media house id:</legend>
+                     <input type="text" name="house_id">
+                  </div>
+                  <div class="input_time_in">
+                     <legend>Select timecode in:</legend>
+                     <input type="text" name="tc_in" placeholder="00:00:00;00">
+                  </div>                  
+                  <div class="input_time_out">
+                     <legend>Select timecode out:</legend>
+                     <input type="text" name="tc_out" placeholder="00:00:00;00">
+                  </div>
+                  <div class="input_adjustment">
+                     <legend>Select time adjustment:</legend>
+                     <input type="text" name="adjustment" placeholder="00:00:00;00">
+                  </div>
+                  <div class="language">
+                     <legend>Select subtitle language:</legend>
+                     <select name="language">
+                       <option value="es">es</option>
+                       <option value="pt">pt</option>
+                     </select>
+                  
+                  </div>                                       
+                  
+		<div class="demo">
+				<h2>STL</h2>
+				<div class="control-group">
+					<label for="select-beast">File:</label>
+					<select id="select-beast" class="demo-default" name="file_id" placeholder="Select a file...">
+						<option value="">Select a file...</option>
+                        {% for sub in sub_list %}
+                           <option value="{{ sub.id }}">
+                             {{ sub.name }}
+                          </option>
+                        {% endfor %}
+					</select>
+				</div>
+				<script>
+				$('#select-beast').selectize({
+					create: true,
+					sortField: {
+						field: 'text',
+						direction: 'asc'
+					},
+					dropdownParent: 'body'
+				});
+				</script>
+			</div>
+                  
+                  <div class="form-group">
+                    <div class="col-lg-10 col-lg-offset-2">
+                      <button type="reset" class="btn btn-default">Cancel</button>
+                      <button type="submit" class="btn btn-primary">Enviar</button>
+                    </div>
+                  </div>
+		
+				</form>
+			</div>
+		</div>
+    </div>
+    <div id="footer">zolechamedia inc.</div>
+  </div>
+ </div>   
+</div>
+
+
+	
+
+</body></html>
