@@ -13,6 +13,7 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(models.Video)
 class VideoAdmin(admin.ModelAdmin):
     list_display = ['house_id']
+    search_fields = ['house_id']
 
 @admin.register(models.Profile)
 class ProfileAdmin(admin.ModelAdmin):

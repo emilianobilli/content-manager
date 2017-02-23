@@ -34,6 +34,7 @@ from cuepoints_manager.views import cm_GetCuePoint
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^video/(?P<api_key>.+)/(?P<token_type>.+)/(?P<token>.+)/(?P<house_id>.+)/$',vm_GetRoot),
+    url(r'^video/token/(?P<token>.+)/m3u8/video.m3u8', vm_GetManifestByToken),
     url(r'^video/token/(?P<token>.+)/$', vm_GetManifestByToken),
     url(r'^video/token/(?P<token>.+)/(?P<filename>.+\.m3u8)', vm_GetRenditionByToken),
     url(r'^video/checkauth/$',vm_PostRoot ),

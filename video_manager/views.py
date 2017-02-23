@@ -294,7 +294,7 @@ def vm_GetUrl(device, info, idp, house_id, conf):
 	    response = json.dumps({ 'error': 'Internal Server Error'})
 	    status   = 500
 	else:
-	    response = json.dumps({ 'url': '%s/%s/' % (conf.tokenurl, token), 'expiration': 7200 })
+	    response = json.dumps({ 'hls': '%s/%s/m3u8/video.m3u8' % (conf.tokenurl, token),'url': '%s/%s/' % (conf.tokenurl, token), 'expiration': 7200 })
 	    status   = http_REQUEST_OK
     else:
 	response     = json.dumps({'error': 'The Customer Have Not Autorization to View this Content'})
