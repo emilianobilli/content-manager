@@ -96,9 +96,9 @@ def vm_PostVideo(request):
 	    gen = secret[0].gen
 	    key = secret[0].key
 
-    cdnurl   = config.cdnurl
+    cdnurl   = 'http://' + config.cdnurl
     path     = getpath(house_id)
-    manifest = get_hls_manifest(config.cdnurl, path ,root, gen, key)
+    manifest = get_hls_manifest(cdnurl, path ,root, gen, key)
     
     if manifest is None:
 	return HttpResponse('', status=http_BAD_REQUEST)
@@ -119,13 +119,14 @@ def _get_md5_hash(house_id):
     return m.hexdigest()
 
 
-def CreateToken (house_id):
+def CreateToken (house_id, protocol='http://'):
     try:
 	video = Video.objects.get(house_id=house_id)
     except:
 	return ''
     
     token = Token()
+    token.protocol      = protocol
     token.expiration 	= datetime.now() + timedelta(0,7200)
     token.token      	= _get_md5_hash(house_id)
     token.video		= video
@@ -180,13 +181,15 @@ def vm_GetManifest(device, info ,idp, house_id, config):
     if access != 'none':
 	
 	if config.secret:
-	    token    = CreateToken(house_id)
-	    cdnurl   = config.tokenurl
+	    token    = CreateToken(house_id, idp.protocol)
+	    cdnurl   = idp.protocol 
+	    cdnurl   = cdnurl + config.tokenurl
 	    if not cdnurl.endswith('/'):
 		cdnurl = cdnurl + '/'
 	    cdnurl   = cdnurl + token
 	else:
-	    cdnurl   = config.cdnurl
+	    cdnurl   = idp.protocol
+	    cdnurl   = cdnurl + config.cdnurl
 	    if not cdnurl.endswith('/'):
 		cdnurl = cdnurl + '/'
 	    cdnurl   = cdnurl + getpath(house_id)
@@ -220,12 +223,14 @@ def vm_GetManifestByToken (request, token):
 	house_id = t.video.house_id
 
 	if config.secret:
-	    cdnurl   = config.tokenurl
+	    cdnurl   = t.protocol
+	    cdnurl   = cdnurl + config.tokenurl
 	    if not cdnurl.endswith('/'):
 		cdnurl = cdnurl + '/'
 	    cdnurl   = cdnurl + token
 	else:
-	    cdnurl   = config.cdnurl
+	    cdnurl   = token.protocol
+	    cdnurl   = cdnurl + config.cdnurl
 	    if not cdnurl.endswith('/'):
 		cdnurl = cdnurl + '/'
 	    cdnurl   = cdnurl + getpath(house_id)
@@ -237,8 +242,8 @@ def vm_GetManifestByToken (request, token):
         status       = http_REQUEST_OK
 	content_type = 'application/x-mpegURL'
 	return HttpResponse(response, status=status,content_type=content_type)
-    except:
-	return HttpResponse(json.dumps({'error': 'Invalid Token'}), status=http_UNAUTHORIZED, content_type='application/json')
+    except Exception as e:
+	return HttpResponse(json.dumps({'error': 'Invalid Token' + str(e)}), status=http_UNAUTHORIZED, content_type='application/json')
 
 
 
@@ -254,7 +259,7 @@ def vm_GetRenditionByToken(request, token, filename):
 
     respose  = ''
     house_id = t.video.house_id
-    cdnbase  = getcdnbase()
+    cdnbase  = t.protocol + getcdnbase()
     path     = getpath(house_id)
     secret   = CdnSecret.objects.filter(enabled=True)
     if len(secret) != 0:
@@ -289,12 +294,12 @@ def vm_GetUrl(device, info, idp, house_id, conf):
 	    access = 'none'
 
     if access != 'none':
-	token        = CreateToken(house_id)
+	token        = CreateToken(house_id, idp.protocol)
 	if token == '':
 	    response = json.dumps({ 'error': 'Internal Server Error'})
 	    status   = 500
 	else:
-	    response = json.dumps({ 'hls': '%s/%s/m3u8/video.m3u8' % (conf.tokenurl, token),'url': '%s/%s/' % (conf.tokenurl, token), 'expiration': 7200 })
+	    response = json.dumps({ 'hls': '%s/%s/m3u8/video.m3u8' % (idp.protocol + conf.tokenurl, token),'url': '%s/%s/' % (idp.protocol + conf.tokenurl, token), 'expiration': 7200 })
 	    status   = http_REQUEST_OK
     else:
 	response     = json.dumps({'error': 'The Customer Have Not Autorization to View this Content'})

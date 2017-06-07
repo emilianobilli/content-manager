@@ -59,8 +59,11 @@ class CdnSecret(models.Model):
 
 
 class Token(models.Model):
+    PROTOCOL = (('http://', 'http://'),
+		('https://', 'https://'))
     expiration  = models.DateTimeField()
     token	= models.CharField(max_length=255)
+    protocol	= models.CharField(max_length=10, choices=PROTOCOL, default='https://')
     video	= models.ForeignKey('Video')
 
     def __unicode__(self):
@@ -81,9 +84,12 @@ class Customer(models.Model):
 	 ('full_payment', 'full_payment'),
 	 ('payment', 'payment'),
 	)
+    PROTOCOL = (('http://', 'http://'),
+		('https://', 'https://'))
 
     name	 = models.CharField(max_length=50)
     idp_code     = models.CharField(max_length=20)
+    protocol	 = models.CharField(max_length=10, choices=PROTOCOL, default='https://')
     access_type  = models.CharField(max_length=50, choices=TYPE)
     api_key      = models.CharField(max_length=50)
     auth_method  = models.ForeignKey('AuthMethod', default=1)
