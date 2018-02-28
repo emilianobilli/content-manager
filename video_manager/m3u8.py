@@ -90,7 +90,7 @@ class M3U8Rendition(object):
 	m3u8 = m3u8 + '#EXT-X-TARGETDURATION:%s\n' % self.header['target_duration']
 	return m3u8
 
-    def toStringHash(self, cdnbase, path, gen, key, stime='', etime=''):
+    def toStringHash(self, cdnbase, path, gen, key, stime='', etime='',idp=''):
 	m3u8 = ''
 	m3u8 = m3u8 + self.headerToString()
 
@@ -105,10 +105,17 @@ class M3U8Rendition(object):
 	
 	for f in self.files:
 	    if stime != '' and etime != '':
-		filename = f['filename'] + '?stime=%s&etime=%s' % (stime,etime)
+		if idp != '':
+		    filename = f['filename'] + '?stime=%s&etime=%s&idp=%s' % (stime,etime,idp)
+		else:
+		    filename = f['filename'] + '?stime=%s&etime=%s' % (stime,etime)
 		m3u8 = m3u8 + '#EXTINF:%s\n%s%s&hash=%s\n' % (f['extinf'], cdnbase+path,  filename, ComputeHash(gen,key, '/'+path+filename))
 	    else:
-		m3u8 = m3u8 + '#EXTINF:%s\n%s%s?hash=%s\n' % (f['extinf'], cdnbase+path,  f['filename'], ComputeHash(gen,key, '/'+path+f['filename']))
+		if idp != '':
+		    filename = f['filename'] + '?idp=%s' % (idp)
+		    m3u8 = m3u8 + '#EXTINF:%s\n%s%s&hash=%s\n' % (f['extinf'], cdnbase+path,  filename, ComputeHash(gen,key, '/'+path+filename))
+		else:
+		    m3u8 = m3u8 + '#EXTINF:%s\n%s%s?hash=%s\n' % (f['extinf'], cdnbase+path,  f['filename'], ComputeHash(gen,key, '/'+path+f['filename']))
 
 	m3u8 = m3u8 + '#EXT-X-ENDLIST'
 	return m3u8

@@ -61,7 +61,7 @@ def build_root_manifest (house_id, cdnurl = ''):
     return m3u8.toString(cdnurl)
 
 
-def build_rendition_manifest (house_id, filename, cdnbase, path, gen='', key='', stime='', etime=''):
+def build_rendition_manifest (house_id, filename, cdnbase, path, gen='', key='', stime='', etime='',idp=''):
     try:
 	video   = Video.objects.get(house_id=house_id)
     except:
@@ -78,4 +78,4 @@ def build_rendition_manifest (house_id, filename, cdnbase, path, gen='', key='',
     for ts in tsfiles:
 	manifest.addfile(ts.extinf, ts.filename,ts.number)
 
-    return manifest.toStringHash(cdnbase,path,gen,key,stime,etime)
+    return manifest.toStringHash(cdnbase,path,gen,key,stime,etime,idp)

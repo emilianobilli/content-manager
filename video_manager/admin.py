@@ -21,7 +21,7 @@ class ProfileAdmin(admin.ModelAdmin):
 
 @admin.register(models.Token)
 class TokenAdmin(admin.ModelAdmin):
-    list_display = ['id', 'token', 'video', 'expiration']
+    list_display = ['id', 'idp_code','token', 'video', 'expiration']
 
 @admin.register(models.CdnSecret)
 class CdnSecretAdmin(admin.ModelAdmin):
@@ -34,3 +34,12 @@ class ProfileFileAdmin(admin.ModelAdmin):
 @admin.register(models.AuthMethod)
 class AuthMethodAdmin(admin.ModelAdmin):
     list_display = ['name']
+
+@admin.register(models.Cdn)
+class CdnAdmin(admin.ModelAdmin):
+    list_display = ['name']
+
+@admin.register(models.ToolboxCache)
+class ToolboxCacheAdmin(admin.ModelAdmin):
+    list_display = ['user_token','urn']
+

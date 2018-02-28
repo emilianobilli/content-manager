@@ -65,6 +65,7 @@ class Token(models.Model):
     token	= models.CharField(max_length=255)
     protocol	= models.CharField(max_length=10, choices=PROTOCOL, default='https://')
     video	= models.ForeignKey('Video')
+    idp_code    = models.CharField(max_length=20)
 
     def __unicode__(self):
 	return self.token
@@ -74,6 +75,13 @@ class AuthMethod(models.Model):
 
     def __unicode__(self):
 	return self.name
+
+class Cdn(models.Model):
+    name	 = models.CharField(max_length=50)
+    base_url     = models.CharField(max_length=1024)
+    def __unicode__(self):
+	return self.name
+
 
 
 class Customer(models.Model):
@@ -93,8 +101,20 @@ class Customer(models.Model):
     access_type  = models.CharField(max_length=50, choices=TYPE)
     api_key      = models.CharField(max_length=50)
     auth_method  = models.ForeignKey('AuthMethod', default=1)
+    cdn		 = models.ForeignKey('Cdn')
     gatra_post   = models.BooleanField(default=False)
+
 
     def __unicode__(self):
 	return self.name
+
+class ToolboxCache(models.Model):
+    user_token   = models.CharField(max_length=255)
+    urn		 = models.CharField(max_length=40)
+    access_data  = models.CharField(max_length=2048,blank=True)
+    info_data    = models.CharField(max_length=4096,blank=True)
+    expiration   = models.DateTimeField()
+
+    def __unicode__(self):
+	return '%s_%s' % (self.user_token,self.urn)
 

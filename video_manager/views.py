@@ -10,6 +10,7 @@ from models import Config
 from models import Customer
 from models import Token
 from models import CdnSecret
+from models import Cdn
 
 from django.utils import timezone
 
@@ -41,6 +42,13 @@ http_UNAUTHORIZED = 401
 def getcdnbase ():
     conf = Config.objects.get(enabled=True)
     return conf.cdnurl
+
+def getcdnbase_byidp (idpcode):
+    try:
+	c = Customer.objects.get(idp_code=idpcode)
+        return c.cdn.base_url
+    except:
+	return getcdnbase()
 
 def getpath (house_id):
     return '%s/hls' % house_id
@@ -119,7 +127,7 @@ def _get_md5_hash(house_id):
     return m.hexdigest()
 
 
-def CreateToken (house_id, protocol='http://'):
+def CreateToken (house_id, protocol='http://', idp=''):
     try:
 	video = Video.objects.get(house_id=house_id)
     except:
@@ -127,6 +135,7 @@ def CreateToken (house_id, protocol='http://'):
     
     token = Token()
     token.protocol      = protocol
+    token.idp_code      = idp
     token.expiration 	= datetime.now() + timedelta(0,7200)
     token.token      	= _get_md5_hash(house_id)
     token.video		= video
@@ -181,7 +190,7 @@ def vm_GetManifest(device, info ,idp, house_id, config):
     if access != 'none':
 	
 	if config.secret:
-	    token    = CreateToken(house_id, idp.protocol)
+	    token    = CreateToken(house_id, idp.protocol,idp.idp_code)
 	    cdnurl   = idp.protocol 
 	    cdnurl   = cdnurl + config.tokenurl
 	    if not cdnurl.endswith('/'):
@@ -189,7 +198,7 @@ def vm_GetManifest(device, info ,idp, house_id, config):
 	    cdnurl   = cdnurl + token
 	else:
 	    cdnurl   = idp.protocol
-	    cdnurl   = cdnurl + config.cdnurl
+	    cdnurl   = cdnurl + getcdnbase_byidp(idp.idp_code)#config.cdnurl
 	    if not cdnurl.endswith('/'):
 		cdnurl = cdnurl + '/'
 	    cdnurl   = cdnurl + getpath(house_id)
@@ -230,7 +239,7 @@ def vm_GetManifestByToken (request, token):
 	    cdnurl   = cdnurl + token
 	else:
 	    cdnurl   = token.protocol
-	    cdnurl   = cdnurl + config.cdnurl
+	    cdnurl   = cdnurl + getcdnbase_byidp(t.idp_code)#config.cdnurl
 	    if not cdnurl.endswith('/'):
 		cdnurl = cdnurl + '/'
 	    cdnurl   = cdnurl + getpath(house_id)
@@ -259,12 +268,12 @@ def vm_GetRenditionByToken(request, token, filename):
 
     respose  = ''
     house_id = t.video.house_id
-    cdnbase  = t.protocol + getcdnbase()
+    cdnbase  = t.protocol + getcdnbase_byidp(t.idp_code)
     path     = getpath(house_id)
     secret   = CdnSecret.objects.filter(enabled=True)
     if len(secret) != 0:
 	stime,etime = dtime(3)
-	response = build_rendition_manifest(house_id, filename, cdnbase, path, secret[0].gen, secret[0].key, stime, etime)
+	response = build_rendition_manifest(house_id, filename, cdnbase, path, secret[0].gen, secret[0].key, stime, etime,t.idp_code)
 
     if response != '':
 	status       = http_REQUEST_OK
@@ -294,7 +303,7 @@ def vm_GetUrl(device, info, idp, house_id, conf):
 	    access = 'none'
 
     if access != 'none':
-	token        = CreateToken(house_id, idp.protocol)
+	token        = CreateToken(house_id, idp.protocol,idp.idp_code)
 	if token == '':
 	    response = json.dumps({ 'error': 'Internal Server Error'})
 	    status   = 500

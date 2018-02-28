@@ -1,3 +1,7 @@
+from django.utils import timezone
+from datetime import datetime
+from datetime import timedelta
+from models import ToolboxCache
 import httplib2
 import urlparse
 import json
@@ -46,27 +50,58 @@ class Device(object):
 	self.user_token = toolbox_user_token
 
     def getInfo(self):
+	doGet = False
+	try:
+	    cache = ToolboxCache.objects.get(user_token=self.user_token)
+	    if cache.info_data != "":
+		return cache.info_data
+
+	except:
+	    cache = None
+
 	try:
 	    ret, content = self.tbx.GET('/device/' + self.user_token)
+		
 	except:
 	    pass
 	
 	if ret['status'] == '200':
+	    if cache is not None:
+		cache.info_data = content
+		cache.save()
 	    return content
 	else:
 	    return None
+
+
 
     def hasAccessTo(self, urn):
+	doGet = False
 	try:
-	    ret, content = self.tbx.GET('/device/' +  self.user_token + '/hasAccessTo?urn=%s&action=VIEW&ip=127.0.0.1' % urn)
+	    cache = ToolboxCache.objects.get(user_token=self.user_token,urn=urn)
+	    if cache.expiration < timezone.now():
+		cache.delete()
+		doGet = True
 	except:
-	    pass
+	    doGet = True
 
-	
-	if ret['status'] == '200':
-	    return content
-	else:
-	    return None
+	if doGet:
+	    try:
+		ret, content = self.tbx.GET('/device/' +  self.user_token + '/hasAccessTo?urn=%s&action=VIEW&ip=127.0.0.1' % urn)
+	    except:
+		return None
+
+	    if ret['status'] == '200':
+		cache = ToolboxCache()
+		cache.expiration  = datetime.now() + timedelta(0,7200)
+		cache.urn         = urn
+		cache.user_token  = self.user_token
+		cache.access_data = content
+		cache.save()
+	    else:
+		return None
+
+	return cache.access_data
 
 class Customer(object):
     def __init__(self, api_key, customer_id, prod=True):
@@ -84,11 +119,3 @@ class Customer(object):
 	else:
 	    return None
 					       
-#t = Device('dfGna9356QYO6ENI6J1GMt8o6UGj2o1p', '237f0e775195b98ee507abf39be71a4365554504')
-#t = ToolBox('dfGna9356QYO6ENI6J1GMt8o6UGj2o1p', True)
-#t.toolbox_user_token = '9e6346cbcdf8b9e3de87cb64066e46ab12b807ea'
-#info = json.loads(t.getInfo())
-#print t.hasAccessTo('urn:tve:hotgo')
-#c = Customer('dfGna9356QYO6ENI6J1GMt8o6UGj2o1p', '5302a46965b81441128b4e88')
-#print c.hasAccessTo('urn:tve:hotgo')
-#print info['customer']['idp']['code']

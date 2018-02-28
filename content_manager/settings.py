@@ -24,7 +24,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static/")
 SECRET_KEY = '=8%mg)v2&!tntx-ea9pfp%q+h#s=+e+m)n_f%2=62=57stknt!'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['videoauth.zolechamedia.net']
 
